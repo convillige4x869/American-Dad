@@ -1,6 +1,7 @@
 """Play the American Dad intro continuously in a Pygame window."""
 from pathlib import Path
 import sys
+import wave
 
 import av
 import numpy as np
@@ -9,28 +10,17 @@ import pygame
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 VIDEO = ROOT / "American Dad Intro - For Speedruns.mp4"
+AUDIO = ROOT / "American Dad Intro Audio.wav"
 WINDOW_SIZE = (800, 600)  # 4:3
 ASSETS = ROOT / "assets"
 
 
 def load_audio_bytes() -> bytes:
-    container = av.open(str(VIDEO))
-    stream = container.streams.audio[0]
-    resampler = av.audio.resampler.AudioResampler(format="s16", layout="stereo", rate=44100)
-    audio = bytearray()
-    try:
-        for frame in container.decode(stream):
-            for converted in resampler.resample(frame):
-                audio.extend(converted.to_ndarray().tobytes())
-        for converted in resampler.resample(None):
-            audio.extend(converted.to_ndarray().tobytes())
-    finally:
-        container.close()
-    return bytes(audio)
+    with wave.open(str(AUDIO), "rb") as source:
+        return source.readframes(source.getnframes())
 
 
 def make_keyboard_click() -> pygame.mixer.Sound:
-    """Create a tiny mechanical key-click without needing an extra asset file."""
     rate = 44100
     length = int(rate * 0.012)
     time = np.arange(length, dtype=np.float32) / rate
@@ -41,53 +31,17 @@ def make_keyboard_click() -> pygame.mixer.Sound:
     return pygame.mixer.Sound(buffer=stereo.tobytes())
 
 
+def audio_from_time(audio_data: bytes, seconds: float, bytes_per_second: int) -> pygame.mixer.Sound:
+    offset = int(seconds * bytes_per_second)
+    return pygame.mixer.Sound(buffer=audio_data[offset:])
+
+
 def fit_image(screen: pygame.Surface, image: pygame.Surface) -> None:
     scale = min(screen.get_width() / image.get_width(), screen.get_height() / image.get_height())
     size = (int(image.get_width() * scale), int(image.get_height() * scale))
     image = pygame.transform.smoothscale(image, size)
     screen.fill((0, 0, 0))
     screen.blit(image, image.get_rect(center=screen.get_rect().center))
-
-
-def floor_clip(screen: pygame.Surface, clock: pygame.time.Clock) -> None:
-    frames = [
-        pygame.image.load(ASSETS / "floor_clip_82.png").convert(),
-        pygame.image.load(ASSETS / "floor_clip_83.png").convert(),
-    ]
-    success = pygame.image.load(ASSETS / "floor_clip_success.png").convert()
-    frame_index = 0
-    speed = 0.0
-    last_press = -1.0
-    clipped = False
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                raise SystemExit
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return
-                if event.key == pygame.K_RETURN:
-                    frame_index = 0
-                    speed = 0.0
-                    last_press = -1.0
-                    clipped = False
-                if event.key == pygame.K_SPACE and not clipped:
-                    now = pygame.time.get_ticks() / 1000
-                    gap = now - last_press
-                    if 0.045 <= gap <= 0.24:
-                        speed += 1.0
-                    else:
-                        speed = max(0.0, speed - 1.5)
-                    last_press = now
-                    frame_index = 1 - frame_index
-                    if speed >= 18:
-                        clipped = True
-
-        fit_image(screen, success if clipped else frames[frame_index])
-        pygame.display.flip()
-        clock.tick(60)
 
 
 def main() -> None:
@@ -109,9 +63,6 @@ def main() -> None:
     keyboard_click = make_keyboard_click()
     audio_data = b""
     bytes_per_second = 44100 * 2 * 2
-    floor_audio = []
-    newspaper_audio = []
-    family_audio = []
     floor_frames = [
         pygame.image.load(ASSETS / "floor_clip_82.png").convert(),
         pygame.image.load(ASSETS / "floor_clip_83.png").convert(),
@@ -127,9 +78,8 @@ def main() -> None:
         pygame.image.load(ASSETS / "family_289.png").convert(),
     ]
     car_frames = [
-        pygame.image.load(ASSETS / "car_640.png").convert(),
-        pygame.image.load(ASSETS / "car_641.png").convert(),
-        pygame.image.load(ASSETS / "car_642.png").convert(),
+        pygame.image.load(ASSETS / "car_619.png").convert(),
+        pygame.image.load(ASSETS / "car_620.png").convert(),
     ]
     video_start = 0.0
     clip_speed = 0.0
@@ -199,25 +149,6 @@ def main() -> None:
 
             audio_data = load_audio_bytes()
             audio = pygame.mixer.Sound(buffer=audio_data)
-            floor_audio = [
-                pygame.mixer.Sound(buffer=audio_data[int(2.70 * bytes_per_second):int(2.84 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(2.73 * bytes_per_second):int(2.87 * bytes_per_second)]),
-            ]
-            newspaper_audio = [
-                pygame.mixer.Sound(buffer=audio_data[int(15.96 * bytes_per_second):int(16.10 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(15.99 * bytes_per_second):int(16.13 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(16.02 * bytes_per_second):int(16.16 * bytes_per_second)]),
-            ]
-            family_audio = [
-                pygame.mixer.Sound(buffer=audio_data[int(9.56 * bytes_per_second):int(9.70 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(9.59 * bytes_per_second):int(9.73 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(9.62 * bytes_per_second):int(9.76 * bytes_per_second)]),
-            ]
-            car_audio = [
-                pygame.mixer.Sound(buffer=audio_data[int(21.33 * bytes_per_second):int(21.47 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(21.36 * bytes_per_second):int(21.50 * bytes_per_second)]),
-                pygame.mixer.Sound(buffer=audio_data[int(21.39 * bytes_per_second):int(21.53 * bytes_per_second)]),
-            ]
             audio.play(loops=-1)
 
         container = av.open(str(VIDEO))
@@ -261,18 +192,18 @@ def main() -> None:
                         car_speed = 0.0
                         last_car = -1.0
                         car_used = False
+                        if audio is not None:
+                            audio.stop()
+                            audio.play(loops=-1)
                         restart_requested = True
                         break
                 now = pygame.time.get_ticks() / 1000
-                holding_space = pygame.key.get_pressed()[pygame.K_SPACE]
                 floor_window = 82 / fps
                 floor_input_ready = floor_window <= frame_time <= floor_window + 0.20
+                holding_space = pygame.key.get_pressed()[pygame.K_SPACE]
                 if holding_space and not clip_used and (floor_active or floor_input_ready) and now - last_space >= 0.01:
-                    if not floor_active:
-                        audio.stop()
                     floor_active = True
                     floor_frame = 1 - floor_frame
-                    floor_audio[floor_frame].play()
                     keyboard_click.play()
                     clip_speed += 1.0
                     last_space = now
@@ -281,14 +212,11 @@ def main() -> None:
                         clip_used = True
                         just_jumped = True
                         audio.stop()
-                        audio = pygame.mixer.Sound(buffer=audio_data[int(9.3 * bytes_per_second):])
+                        audio = audio_from_time(audio_data, 9.3, bytes_per_second)
                         audio.play(loops=-1)
-                elif holding_space and not newspaper_used and 15.4 <= frame_time <= 17.2 and now - last_newspaper >= 0.01:
-                    if not newspaper_active:
-                        audio.stop()
+                elif holding_space and not newspaper_used and (newspaper_active or 15.4 <= frame_time <= 17.2) and now - last_newspaper >= 0.01:
                     newspaper_active = True
                     newspaper_frame = (newspaper_frame + 1) % 3
-                    newspaper_audio[newspaper_frame].play()
                     keyboard_click.play()
                     newspaper_speed += 1.0
                     last_newspaper = now
@@ -297,14 +225,11 @@ def main() -> None:
                         newspaper_used = True
                         just_jumped = True
                         audio.stop()
-                        audio = pygame.mixer.Sound(buffer=audio_data[int(18.67 * bytes_per_second):])
+                        audio = audio_from_time(audio_data, 18.67, bytes_per_second)
                         audio.play(loops=-1)
-                elif holding_space and not family_used and 9.45 <= frame_time <= 10.15 and now - last_family >= 0.01:
-                    if not family_active:
-                        audio.stop()
+                elif holding_space and not family_used and (family_active or 9.45 <= frame_time <= 10.15) and now - last_family >= 0.01:
                     family_active = True
                     family_frame = (family_frame + 1) % 3
-                    family_audio[family_frame].play()
                     keyboard_click.play()
                     family_speed += 1.0
                     last_family = now
@@ -313,23 +238,20 @@ def main() -> None:
                         family_used = True
                         just_jumped = True
                         audio.stop()
-                        audio = pygame.mixer.Sound(buffer=audio_data[int(12.27 * bytes_per_second):])
+                        audio = audio_from_time(audio_data, 12.27, bytes_per_second)
                         audio.play(loops=-1)
-                elif holding_space and not car_used and 21.20 <= frame_time <= 21.85 and now - last_car >= 0.01:
-                    if not car_active:
-                        audio.stop()
+                elif holding_space and not car_used and (car_active or 619 / fps <= frame_time <= 620 / fps + 0.20) and now - last_car >= 0.01:
                     car_active = True
-                    car_frame = (car_frame + 1) % 3
-                    car_audio[car_frame].play()
+                    car_frame = 1 - car_frame
                     keyboard_click.play()
                     car_speed += 1.0
                     last_car = now
                     if car_speed >= 10:
-                        video_start = 25.63
+                        video_start = 26.16
                         car_used = True
                         just_jumped = True
                         audio.stop()
-                        audio = pygame.mixer.Sound(buffer=audio_data[int(25.63 * bytes_per_second):])
+                        audio = audio_from_time(audio_data, 26.16, bytes_per_second)
                         audio.play(loops=-1)
                 if just_jumped or restart_requested:
                     break
@@ -358,17 +280,13 @@ def main() -> None:
             container.close()
         if restart_requested:
             restart_requested = False
-            if audio is not None:
-                audio.stop()
-                audio = pygame.mixer.Sound(buffer=audio_data)
-                audio.play(loops=-1)
             continue
         if not just_jumped:
             final_time = pygame.time.get_ticks() / 1000 - (run_start or pygame.time.get_ticks() / 1000)
-            if audio is not None:
-                audio.stop()
             playing = False
             finished = True
+            if audio is not None:
+                audio.stop()
             video_start = 0.0
             clip_speed = 0.0
             last_space = -1.0

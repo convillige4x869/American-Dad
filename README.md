@@ -1,10 +1,10 @@
-# American Dad Intro Loop
+# American Dad Intro Speedrun
 
-A minimal 4:3 Pygame window that plays the supplied video and streams its audio
-continuously on loop. It also includes a Floor Clip practice mode using the
-provided bedroom and dinner frames.
+A 4:3 Pygame speedrun built around the supplied American Dad intro. The game
+plays the intro video with its extracted WAV soundtrack, tracks your run time,
+and includes frame-accurate skip glitches.
 
-## Run it
+## Run the Python version
 
 From this folder:
 
@@ -13,12 +13,36 @@ python -m pip install -r requirements.txt
 python american_dad_speedrun.py
 ```
 
-The player reads the MP4 directly from your Pictures folder using PyAV and
-renders each frame in Pygame. Choose Floor Clip from the menu, then hold Space
-to alternate the two bedroom frames automatically. Build enough speed
-to trigger the dinner-frame teleport. The same glitch is hidden in Play Intro:
-when the bedroom moment arrives, spam Space on rhythm to jump ahead to the
-dinner scene. Each floor frame also triggers its matching short audio slice,
-creating the stutter/glitch effect. Press Enter to restart and Escape to return
-to the menu. The newspaper skip works the same way later in the intro: Space
-cycles frames 479–481 and enough speed cuts to frame 560.
+The original video and extracted audio must be present beside the script:
+
+- `American Dad Intro - For Speedruns.mp4`
+- `American Dad Intro Audio.wav`
+- `assets/`
+
+## Controls
+
+- Start Run: begin from the menu
+- Restart Run: restart after finishing
+- Hold `Space`: activate and build each glitch
+- `Enter`: restart the current run
+- Close the window: quit
+
+## Glitches
+
+- Floor Skip: cycles frames 82–83 and jumps to about frame 279
+- Family Skip: cycles frames 288–290 and jumps to frame 368
+- Newspaper Skip: cycles frames 479–481 and jumps to frame 560
+- Car Skip: cycles frames 619–620 and jumps to frame 784
+
+Each glitch uses a tight timing window, frame cycling, speed buildup, and a
+short keyboard-click effect. When a skip succeeds, the video and WAV soundtrack
+seek to the destination point together.
+
+## Windows executable
+
+The compiled executable is available as a GitHub Release asset:
+
+`dist/AmericanDadIntro.exe`
+
+The executable bundles the video, WAV audio, and image assets, so Python is not
+required to run it.
